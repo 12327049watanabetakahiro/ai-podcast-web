@@ -1,7 +1,7 @@
-import os
-import requests
+import io
 import streamlit as st
 from groq import Groq
+from gtts import gTTS
 
 # 画面の基本設定
 st.title("🎙️ 深夜のAI観察室")
@@ -11,7 +11,6 @@ st.caption("テーマを入力すると、AIが自動で討論し音声を生成
 theme = st.text_input("ディスカッションテーマ", value="なぜ人間は『時間』に支配されているのか？")
 
 if st.button("対話を生成して音声を聴く"):
-    # SecretsからAPIキーを取得（安全な取得方法に変更）
     groq_api_key = st.secrets.get("GROQ_API_KEY")
     
     if not groq_api_key:
@@ -32,19 +31,15 @@ if st.button("対話を生成して音声を聴く"):
                 st.write("### 生成された台本")
                 st.text(script_text)
 
-            # 音声の合成 (Web版 VOICEVOX API)
+            # 音声の合成 (Google TTS)
             with st.spinner("音声を合成中..."):
-                speaker_id = 1
-                tts_url = f"https://api.ttsquest.app/v2/voicevox/synthesis?text={script_text[:100]}&speaker={speaker_id}"
-                
-                res = requests.get(tts_url).json()
-                audio_url = res.get("retryAfterUrl") or res.get("mp3StreamingUrl")
+                tts = gTTS(text=script_text, lang='ja')
+                fp = io.BytesIO()
+                tts.write_to_fp(fp)
+                fp.seek(0)
 
-            if audio_url:
-                st.success("作成が完了しました！")
-                st.audio(audio_url)
-            else:
-                st.error("音声の生成に失敗しました。")
+            st.success("作成が完了しました！")
+            st.audio(fp, format='audio/mp3')
 
         except Exception as e:
             st.error(f"エラーが発生しました: {e}")
